@@ -3,10 +3,9 @@ import queue as q
 import numpy as np
 import time
 import os
-import math
 
 class parallel_env:
-    def __init__(self,num_jobs,num_workers,f,fargs):
+    def __init__(self,num_jobs,num_workers,f,fargs,num_data_items=None):
         self.num_jobs    = num_jobs
         # function
         self.f = f
@@ -14,6 +13,8 @@ class parallel_env:
         self.fargs = fargs
         # global lock for write synchronization
         self.lock  = mp.Lock()
+        self.data_queue = mp.Queue()
+        self.num_data_items = num_data_items
 
         if num_jobs == 0 or num_workers == 0 \
            or num_jobs < 0 or num_workers < 0:
@@ -35,27 +36,53 @@ class parallel_env:
 
     def run(self):
         worker_processes = []
+        data = []
         for n in self.jobs_per_worker:
-            w = worker(self.lock)
+            w = worker(self.lock,self.data_queue)
             w.fill_job_queue(n,self.f,self.fargs)
             worker_processes.append(mp.Process(target=w.run_job))
         tick = time.time()
         for wp in worker_processes:
             wp.start()
+        if self.num_data_items is not None:
+            for wp in worker_processes:
+                t_list = []
+                for i in range(self.num_data_items):
+                    t = self.data_queue.get()
+                    t_list.append(t)
+                data.append(t_list)
         for wp in worker_processes:
             # join all and block main thread until all finish.
             wp.join()
         tock = time.time()
         print(f"Total run time: {tock-tick} s")
+        if self.num_data_items is not None:
+            #fixme split list into individual lists
+            return self.unpack_data(data)
+        else:
+            return 0
+
+    def unpack_data(self,data):
+        num_data_points = len(data[0])
+        data_points_to_return = []
+        for i in range(num_data_points):
+            data_points_to_return.append( [data[j][i] for j in range(len(data))] )
+        return data_points_to_return
 
 class worker:
-    def __init__(self,lock=None):
+    def __init__(self,lock=None,queue=None):
         self.job_q  = q.Queue()
         self.lock   = lock
+        self.data_queue = queue
 
     def fill_job_queue(self,n,f,fargs):
         for i in range(n):
             self.job_q.put(job(f,fargs))
+
+    #FIXME: bug ehere, race condition
+    def place_data_queue(self,*args):
+        for i in range(len(args)):
+            self.data_queue.put(args[i])
 
     def run_job(self):
         while not self.job_q.empty():
@@ -75,9 +102,10 @@ class worker:
         # any process forked from the main process inherits seed used by np.
         np.random.seed((os.getpid() * int(time.time())) % 123456789)
 
+
+
 # if only a struct
 class job:
     def __init__(self,f,fargs):
         self.f = f
         self.fargs = fargs
-
