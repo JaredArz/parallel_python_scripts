@@ -1,19 +1,19 @@
 import numpy as np
 import time
 import os
-import math 
+import math
 
 def task(bound):
-    np.random.seed((os.getpid() * int(time.time())) % 123456789)
+    #np.random.seed((os.getpid() * int(time.time())) % 123456789)
     # bound should be > 50000
     x = sum([math.sqrt(i) for i in range(1, bound)])
-    r = abs(np.random.normal(1,1))
-    time.sleep(r)
-    write(r)
+    #r = abs(np.random.normal(1,1))
+    #time.sleep(r)
+    #write(r)
     return 0
 
 def write(data):
-    try: 
+    try:
         f = open("race.txt",'a')
         w_str = (
             f"{data}\n"
