@@ -4,7 +4,7 @@ import threading as tx
 import numpy as np
 import time
 import os
-import math 
+import math
 from typing import Callable
 from dataclasses import dataclass
 
@@ -34,7 +34,6 @@ def run_thread(jq):
         job.join()
         job.close()
         print("finished job")
-    
 def task(bound,l):
     print("stat running")
     np.random.seed((os.getpid() * int(time.time())) % 123456789)
@@ -43,7 +42,6 @@ def task(bound,l):
     r = abs(np.random.normal(1,1))
     time.sleep(r)
     write(r,l)
-    
 def fill_job_queue(m,jq,f,argsv):
     print(m)
     for i in range(m):

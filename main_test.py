@@ -1,25 +1,32 @@
 import math
-import parallel_class as pc
+from parallel_class import parallel_env
 # pass in worker that is running task to have access to w/lock functions
 def task(worker, args):
     # unpack args by searching dict.
+    print("doing task")
     bound = args["bound"]
     #worker.set_rng_seed()
-    print("inside running task...")
-    x = sum([math.sqrt(i) for i in range(1, bound)])
+    a = [math.sqrt(i) for i in range(1, bound)]
+    h = sum(a)
+    i = sum(a)
+    print((h,i))
     #r = abs(np.random.normal(1,1))
     #time.sleep(r)
-    #worker.write_with_lock("test.txt",x)
-    a = x
-    b = x/2
-    c = x/3
-    worker.place_data_queue(a,b,c)
+    #worker.write_with_lock("test.txt",)
+    #worker.place_data_queue(a,b)
+    worker.place_data_queue(h,i)
 
 if __name__ == "__main__":
-    n    = 100
-    args = {"bound":10000000}
+    n    = 6
+    #FIXME: currently breaks with large input args = {"bound":100000000}
+    args = {"bound":100000000}
     num_workers = 16
-    a = pc.parallel_env(n,num_workers,task,args,3)
-    data = a.run()
-    print(data)
+    #data = parallel_env(n,num_workers,task,args,False).run()
+    data   = parallel_env(n,num_workers,task,args).run()
+    first  = data[0]
+    second = data[1]
+    #print(second)
+    #print(first)
+    print(len(first))
+    #print(f"0:{first}\n1:{second}")
 

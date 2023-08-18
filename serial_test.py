@@ -3,14 +3,19 @@ import time
 import os
 import math
 
+
+
 def task(bound):
+    l = []
     #np.random.seed((os.getpid() * int(time.time())) % 123456789)
     # bound should be > 50000
-    x = sum([math.sqrt(i) for i in range(1, bound)])
+    x = [math.sqrt(i) for i in range(1, bound)]
+    a = sum(x)
+    b = sum(x)
+    return a,b
     #r = abs(np.random.normal(1,1))
     #time.sleep(r)
     #write(r)
-    return 0
 
 def write(data):
     try:
@@ -28,6 +33,8 @@ def write(data):
         pass
 
 st          = time.time()
-for i in range(144):
-    task(10000000)
+global_list = []
+for i in range(4):
+    global_list.append(task(100000000))
+print(global_list)
 print(f"Time: {time.time()-st}")
