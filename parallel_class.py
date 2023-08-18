@@ -6,6 +6,7 @@ import os
 import threading as tx
 
 
+#FIXME: known bug: spawn context unusuable, only fork
 class parallel_env:
     def __init__(self,num_jobs,num_workers,f,fargs,data_handling=True):
         self.num_jobs    = num_jobs
@@ -14,8 +15,6 @@ class parallel_env:
         # dict of function arguments
         self.fargs = fargs
         # global lock for write synchronization
-        self.lock       = mp.Lock()
-        self.data_queue = mp.Queue()
         # using a list to store all data from f()
         self.data_temp  = []
         self.data_handling = data_handling
@@ -42,32 +41,28 @@ class parallel_env:
     def run(self):
         #need status of processes in consumer thread
         worker_processes = []
-        consumer_thread = tx.Thread(target = self.consume)
+        ctx  = mp.get_context('fork')
+        lock       = ctx.Lock()
+        data_queue = ctx.Queue()
+        consumer_thread = tx.Thread(target = self.consume,args=(data_queue,))
 
         for n in self.jobs_per_worker:
-            w = worker(self.lock,self.data_queue)
+            w = worker(lock,data_queue)
             w.fill_job_queue(n,self.f,self.fargs)
-            worker_processes.append(mp.Process(target=w.run_job))
+            worker_processes.append(ctx.Process(target=w.run_job))
         tick = time.time()
         for wp in worker_processes:
-            print("starting procs")
             wp.start()
         if self.data_handling:
-            print("starting thread")
             consumer_thread.start()
         for wp in worker_processes:
             # join all and block main thread until all finish.
-            print("joining procs")
             wp.join()
-
-
         for wp in worker_processes:
-            print(wp.is_alive())
-
-        self.data_queue.put("Kill Thread")
-        print("joining thread")
+            # join all and block main thread until all finish.
+            wp.close()
+        data_queue.put("Kill Thread")
         consumer_thread.join()
-        print("thread exited")
         tock = time.time()
         print(f"Total run time: {tock-tick} s")
         if self.data_handling:
@@ -83,9 +78,9 @@ class parallel_env:
             data_points_to_return.append( [data[j][i] for j in range(len(data))] )
         return data_points_to_return
 
-    def consume(self):
+    def consume(self,data_queue):
         while True:
-            data = self.data_queue.get()
+            data = data_queue.get()
             if data == "Kill Thread":
                 break
             else:
