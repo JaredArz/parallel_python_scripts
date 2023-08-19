@@ -61,7 +61,10 @@ class parallel_env:
         tock = time.time()
         print(f"Total run time: {tock-tick} s")
         if self.data_handling:
-            return self.unpack_data(self.data_temp)
+            if len(self.data_temp) != self.num_jobs:
+                print("!!!Some data was not recieved from a task or was lost!!!")
+            unpacked_data = self.unpack_data(self.data_temp)
+            return unpacked_data
         else:
             return 0
 

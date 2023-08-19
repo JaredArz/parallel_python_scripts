@@ -11,14 +11,14 @@ def task(worker,b,c):
     res2 = sum(a)
     seconds = abs(np.random.normal(1,1))
     time.sleep(seconds)
-    worker.write_with_lock(f"test.txt","writing with lock in {os.getpid()}")
+    worker.write_with_lock("test.txt",f"writing with lock in {os.getpid()}")
     worker.place_data_queue(res1,res2)
 
 if __name__ == "__main__":
-    n    = 6
+    n    = 4
     args = (100000,'c')
-    num_workers = 16
+    num_workers = 4
     data   = parallel_env(n,num_workers,task,args).run()
     first_res  = data[0]
     second_res = data[1]
-    print(f"Results returned: {len(first_res)}")
+    print(f"Results returned: \n{first_res}\n{second_res}")
