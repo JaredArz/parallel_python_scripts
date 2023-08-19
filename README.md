@@ -1,1 +1,1 @@
-### Generic functions to parallelize simple python programs
+### class to parallelize simple python programs
