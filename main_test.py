@@ -1,30 +1,24 @@
 import math
 from parallel_class import parallel_env
-# pass in worker that is running task to have access to w/lock functions
-def task(worker, args):
-    # unpack args by searching dict.
-    bound = args["bound"]
-    #worker.set_rng_seed()
-    a = [math.sqrt(i) for i in range(1, bound)]
-    h = sum(a)
-    i = sum(a)
-    #r = abs(np.random.normal(1,1))
-    #time.sleep(r)
-    #worker.write_with_lock("test.txt",)
-    #worker.place_data_queue(a,b)
-    worker.place_data_queue(h,i)
+import numpy as np
+import time
+import os
+
+def task(worker,b,c):
+    worker.set_rng_seed()
+    a = [math.sqrt(i) for i in range(1, b)]
+    res1 = sum(a)
+    res2 = sum(a)
+    seconds = abs(np.random.normal(1,1))
+    time.sleep(seconds)
+    worker.write_with_lock(f"test.txt","writing with lock in {os.getpid()}")
+    worker.place_data_queue(res1,res2)
 
 if __name__ == "__main__":
     n    = 6
-    #FIXME: currently breaks with large input args = {"bound":100000000}
-    args = {"bound":10000000}
+    args = (100000,'c')
     num_workers = 16
-    #data = parallel_env(n,num_workers,task,args,False).run()
     data   = parallel_env(n,num_workers,task,args).run()
-    first  = data[0]
-    second = data[1]
-    #print(second)
-    #print(first)
-    print(len(first))
-    #print(f"0:{first}\n1:{second}")
-
+    first_res  = data[0]
+    second_res = data[1]
+    print(f"Results returned: {len(first_res)}")

@@ -5,17 +5,14 @@ import time
 import os
 import threading as tx
 
-
 #FIXME: known bug: spawn context unusuable, only fork
 class parallel_env:
     def __init__(self,num_jobs,num_workers,f,fargs,data_handling=True):
         self.num_jobs    = num_jobs
-        print(f"num jobs:{self.num_jobs}")
         self.f = f
-        # dict of function arguments
         self.fargs = fargs
         # global lock for write synchronization
-        # using a list to store all data from f()
+        # using a list to store all data from f() for now
         self.data_temp  = []
         self.data_handling = data_handling
 
@@ -28,7 +25,7 @@ class parallel_env:
         else:
             self.num_workers = num_workers
 
-        jobs_to_assign = self.num_jobs
+        jobs_to_assign  = self.num_jobs
         jobs_per_worker = [0]*self.num_workers
         for i in range(self.num_jobs):
             jobs_per_worker[i % self.num_workers]+=1
@@ -36,12 +33,10 @@ class parallel_env:
             if jobs_to_assign == 0:
                 break
         self.jobs_per_worker=jobs_per_worker
-        print(f"jobs per worker:{self.jobs_per_worker}")
 
     def run(self):
-        #need status of processes in consumer thread
         worker_processes = []
-        ctx  = mp.get_context('fork')
+        ctx        = mp.get_context('fork')
         lock       = ctx.Lock()
         data_queue = ctx.Queue()
         consumer_thread = tx.Thread(target = self.consume,args=(data_queue,))
@@ -61,12 +56,11 @@ class parallel_env:
         for wp in worker_processes:
             # join all and block main thread until all finish.
             wp.close()
-        data_queue.put("Kill Thread")
+        data_queue.put("Sentinel")
         consumer_thread.join()
         tock = time.time()
         print(f"Total run time: {tock-tick} s")
         if self.data_handling:
-            print(f"data temp: {self.data_temp}")
             return self.unpack_data(self.data_temp)
         else:
             return 0
@@ -81,34 +75,34 @@ class parallel_env:
     def consume(self,data_queue):
         while True:
             data = data_queue.get()
-            if data == "Kill Thread":
+            if data == "Sentinel":
                 break
             else:
                 self.data_temp.append(data)
 
 class worker:
-    #FIXME: lock and queue optional
-    def __init__(self,lock=None,queue=None):
+    # queue optional
+    def __init__(self,lock,queue=None):
         self.job_q      = q.Queue()
         self.lock       = lock
         self.data_queue = queue
 
     def fill_job_queue(self,n,f,fargs):
+        new_fargs = (self, *fargs)
         # Placing an unrestricted tuple onto the queue for an unrestricted
         # function can lead to a deadlock. Either a consumer thread needs to act as relief
         # (currently implemented) or a temporary file needs to managed and data reconstructed 
         for i in range(n):
-            self.job_q.put(job(f,fargs))
+            self.job_q.put(job(f,new_fargs))
 
     def place_data_queue(self,*args):
         self.data_queue.put(args)
 
     def run_job(self):
-        #time.sleep(1)
         while not self.job_q.empty():
             print("starting job")
             job_to_run = self.job_q.get()
-            job_to_run.f(self,job_to_run.fargs)
+            job_to_run.f(*job_to_run.fargs)
             print("finished a job")
 
     def write_with_lock(self,fname,data):
@@ -119,10 +113,10 @@ class worker:
                 f.write(str(data)+"\n")
         finally:
             self.lock.release()
+
     def set_rng_seed(self):
         # any process forked from the main process inherits seed used by np.
         np.random.seed((os.getpid() * int(time.time())) % 123456789)
-
 
 
 # if only a struct
